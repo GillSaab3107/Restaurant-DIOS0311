@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
+import { getDocs, doc, updateDoc } from "firebase/firestore";
 
 export default function OrderStatus() {
   const { table } = useLocalSearchParams();
@@ -44,31 +45,63 @@ export default function OrderStatus() {
 
   // 💳 Razorpay (Web only)
   const handlePayment = () => {
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.async = true;
+  const script = document.createElement("script");
+  script.src = "https://checkout.razorpay.com/v1/checkout.js";
+  script.async = true;
 
-    script.onload = () => {
-      const options = {
-        key: "rzp_live_SJDx4xHr1xmyYS", // 🔥 Replace with your Razorpay Key ID
-        amount: 100, // ₹1 test payment
-        currency: "INR",
-        name: "DIOS Dine-In",
-        description: "Order Payment",
-        handler: function () {
-          alert("Payment Successful!");
-        },
-        theme: {
-          color: "#145c43",
-        },
-      };
+  script.onload = () => {
+    const options = {
+      key: "rzp_live_YOURKEYHERE", // your live key
+      amount: 100, // replace later with real total * 100
+      currency: "INR",
+      name: "DIOS Dine-In",
+      description: "Order Payment",
 
-      const rzp = new (window as any).Razorpay(options);
-      rzp.open();
+      handler: async function (response: any) {
+        try {
+          const paymentId = response.razorpay_payment_id;
+
+          // 🔥 Get latest order for this table
+          const q = query(
+            collection(db, "orders"),
+            where("table", "==", table)
+          );
+
+          const snapshot = await getDocs(q);
+
+          if (!snapshot.empty) {
+            const latestDoc = snapshot.docs
+              .sort(
+                (a: any, b: any) =>
+                  b.data().createdAt?.seconds -
+                  a.data().createdAt?.seconds
+              )[0];
+
+            await updateDoc(doc(db, "orders", latestDoc.id), {
+              paymentStatus: "paid",
+              razorpay_payment_id: paymentId,
+              paidAt: new Date(),
+              status: "completed",
+            });
+          }
+
+          alert("Payment Successful ✅");
+        } catch (error) {
+          alert("Payment recorded but update failed");
+        }
+      },
+
+      theme: {
+        color: "#145c43",
+      },
     };
 
-    document.body.appendChild(script);
+    const rzp = new (window as any).Razorpay(options);
+    rzp.open();
   };
+
+  document.body.appendChild(script);
+};
 
   return (
     <View style={styles.container}>
