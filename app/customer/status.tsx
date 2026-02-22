@@ -51,7 +51,7 @@ export default function OrderStatus() {
 
   script.onload = () => {
     const options = {
-      key: "rzp_live_YOURKEYHERE", // your live key
+      key: "rzp_live_SJDx4xHr1xmyYS", // your live key
       amount: 100, // replace later with real total * 100
       currency: "INR",
       name: "DIOS Dine-In",
