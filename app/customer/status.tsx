@@ -3,8 +3,14 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
-import { getDocs, doc, updateDoc } from "firebase/firestore";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import {
+  getDocs,
+  doc,
+  updateDoc,
+  addDoc,
+  collection,
+  serverTimestamp
+} from "firebase/firestore";
 
 export default function OrderStatus() {
   const { table } = useLocalSearchParams();
