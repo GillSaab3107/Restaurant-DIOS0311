@@ -51,7 +51,7 @@ export default function CartScreen() {
 
     script.onload = () => {
       const options = {
-        key: "rzp_live_YOUR_REAL_KEY",
+        key: "rzp_live_SJDx4xHr1xmyYS",
         amount: total * 100,
         currency: "INR",
         name: "DIOS Dine-In",
