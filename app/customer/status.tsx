@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { db } from "../../firebase";
+import {orderBy, limit } from "firebase/firestore";
 import {
   getDocs,
   doc,
@@ -25,6 +26,8 @@ export default function OrderStatus() {
     const q = query(
       collection(db, "orders"),
       where("table", "==", table)
+      orderBy("createdAt", "desc"),
+      limit(1)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
