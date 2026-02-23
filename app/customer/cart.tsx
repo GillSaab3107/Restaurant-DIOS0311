@@ -1,7 +1,7 @@
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { useCart } from "../../context/CartContext";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../firebase";
-import { Alert } from "react-native";
 import {
   View,
   Text,
@@ -9,66 +9,84 @@ import {
   TouchableOpacity,
   FlatList,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
 
 export default function CartScreen() {
   const { table } = useLocalSearchParams();
   const router = useRouter();
   const { cart, setCart } = useCart();
 
-  // Increase quantity
+  const total = cart.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+
   const increaseQty = (index: number) => {
     const updated = [...cart];
     updated[index].quantity += 1;
     setCart(updated);
   };
 
-  // Decrease quantity / remove item
   const decreaseQty = (index: number) => {
     const updated = [...cart];
 
     if (updated[index].quantity > 1) {
       updated[index].quantity -= 1;
     } else {
-      updated.splice(index, 1); // remove item completely
+      updated.splice(index, 1);
     }
 
     setCart(updated);
   };
 
-  // Calculate total
-  const total = cart.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
-
-  // Place order
-  const placeOrder = async () => {
-    if (cart.length === 0) return;
-
-    if (!table) {
-      alert("Table not found!");
+  // 🔥 PAY & SAVE ORDER
+  const handlePayment = () => {
+    if (cart.length === 0) {
+      alert("Cart is empty");
       return;
     }
 
-  try {
-    await addDoc(collection(db, "orders"), {
-        table: table || "Unknown",
-        items: cart,
-        total: total,
-        status: "pending",
-        createdAt: serverTimestamp(),
-      });
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
 
-      setCart([]);
+    script.onload = () => {
+      const options = {
+        key: "rzp_live_YOUR_REAL_KEY",
+        amount: total * 100,
+        currency: "INR",
+        name: "DIOS Dine-In",
+        description: "Order Payment",
 
-      Alert.alert("Success", "Order placed successfully!");
-      router.replace(`/customer/status?table=${table}`);
+        handler: async function (response: any) {
+          try {
+            await addDoc(collection(db, "orders"), {
+              table,
+              items: cart,
+              totalAmount: total,
+              status: "confirmed",
+              paymentStatus: "paid",
+              razorpay_payment_id: response.razorpay_payment_id,
+              createdAt: serverTimestamp(),
+            });
 
-    } catch (error) {
-      console.log("ORDER ERROR:", error);
-      alert(JSON.stringify(error));
-    }
+            setCart([]);
+
+            router.replace(`/customer/status?table=${table}`);
+          } catch (error) {
+            alert("Order save failed after payment");
+          }
+        },
+
+        theme: {
+          color: "#145c43",
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    };
+
+    document.body.appendChild(script);
   };
 
   return (
@@ -116,11 +134,8 @@ export default function CartScreen() {
         <Text style={styles.totalText}>Total: ₹ {total}</Text>
       </View>
 
-      <TouchableOpacity
-        style={styles.placeButton}
-        onPress={placeOrder}
-      >
-        <Text style={styles.placeText}>Place Order</Text>
+      <TouchableOpacity style={styles.payButton} onPress={handlePayment}>
+        <Text style={styles.payText}>Place Order & Pay</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -136,18 +151,8 @@ export default function CartScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: "#ffffff",
-  },
-
-  title: {
-    fontSize: 18,
-    marginBottom: 10,
-    fontWeight: "bold",
-  },
-
+  container: { flex: 1, padding: 16, backgroundColor: "#fff" },
+  title: { fontSize: 18, marginBottom: 10, fontWeight: "bold" },
   card: {
     backgroundColor: "#e6f4ea",
     padding: 12,
@@ -155,69 +160,33 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
   },
-
-  name: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-
-  size: {
-    fontSize: 14,
-    color: "#555",
-  },
-
-  qtyContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
+  name: { fontSize: 16, fontWeight: "600" },
+  size: { fontSize: 14, color: "#555" },
+  qtyContainer: { flexDirection: "row", alignItems: "center" },
   qtyButton: {
     backgroundColor: "#145c43",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
   },
-
-  qtyText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-
-  qtyNumber: {
-    marginHorizontal: 10,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-
+  qtyText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  qtyNumber: { marginHorizontal: 10, fontSize: 16, fontWeight: "600" },
   totalContainer: {
     paddingVertical: 15,
     borderTopWidth: 1,
     borderColor: "#ddd",
     marginTop: 10,
   },
-
-  placeButton: {
+  totalText: { fontSize: 18, fontWeight: "bold" },
+  payButton: {
     marginTop: 15,
     backgroundColor: "#1b5e20",
     padding: 14,
     borderRadius: 10,
     alignItems: "center",
   },
-
-  placeText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-
-  totalText: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-
+  payText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
   backButton: {
     marginTop: 15,
     backgroundColor: "#145c43",
