@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
 import {
   getDocs,
@@ -9,6 +8,9 @@ import {
   updateDoc,
   addDoc,
   collection,
+  query,
+  where,
+  onSnapshot
   serverTimestamp
 } from "firebase/firestore";
 
