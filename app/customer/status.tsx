@@ -10,7 +10,7 @@ import {
   collection,
   query,
   where,
-  onSnapshot
+  onSnapshot,
   serverTimestamp
 } from "firebase/firestore";
 
