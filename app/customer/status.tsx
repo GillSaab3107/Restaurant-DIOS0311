@@ -4,6 +4,7 @@ import { useLocalSearchParams } from "expo-router";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
 import { getDocs, doc, updateDoc } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 
 export default function OrderStatus() {
   const { table } = useLocalSearchParams();
@@ -51,8 +52,8 @@ export default function OrderStatus() {
 
   script.onload = () => {
     const options = {
-      key: "rzp_live_SJDx4xHr1xmyYS", // your live key
-      amount: 100, // replace later with real total * 100
+      key: "rzp_live_YOURKEYHERE",
+      amount: total * 100, // use real total
       currency: "INR",
       name: "DIOS Dine-In",
       description: "Order Payment",
@@ -61,33 +62,25 @@ export default function OrderStatus() {
         try {
           const paymentId = response.razorpay_payment_id;
 
-          // 🔥 Get latest order for this table
-          const q = query(
-            collection(db, "orders"),
-            where("table", "==", table)
-          );
+          // 🔥 SAVE ORDER ONLY AFTER PAYMENT
+          await addDoc(collection(db, "orders"), {
+            table: table,
+            items: cart,
+            totalAmount: total,
+            status: "confirmed",
+            paymentStatus: "paid",
+            razorpay_payment_id: paymentId,
+            createdAt: serverTimestamp(),
+          });
 
-          const snapshot = await getDocs(q);
+          alert("Order Placed & Payment Successful ✅");
 
-          if (!snapshot.empty) {
-            const latestDoc = snapshot.docs
-              .sort(
-                (a: any, b: any) =>
-                  b.data().createdAt?.seconds -
-                  a.data().createdAt?.seconds
-              )[0];
+          // optional: clear cart
+          setCart([]);
 
-            await updateDoc(doc(db, "orders", latestDoc.id), {
-              paymentStatus: "paid",
-              razorpay_payment_id: paymentId,
-              paidAt: new Date(),
-              status: "completed",
-            });
-          }
-
-          alert("Payment Successful ✅");
+          router.replace(`/customer/status?table=${table}`);
         } catch (error) {
-          alert("Payment recorded but update failed");
+          alert("Payment succeeded but order save failed");
         }
       },
 
