@@ -54,9 +54,6 @@ setStatus(latestOrder.status);
       <Text style={[styles.status, { color: getColor() }]}>
         {status.toUpperCase()}
       </Text>
-
-      {status === "ready" && (
-      )}
     </View>
   );
 }
