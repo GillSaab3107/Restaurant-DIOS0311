@@ -1,41 +1,62 @@
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { db } from "../../firebase";
 import {
   collection,
   query,
   where,
   onSnapshot,
-  orderBy,
-  limit
 } from "firebase/firestore";
+import { db } from "../../firebase";
 
 export default function OrderStatus() {
   const { table } = useLocalSearchParams();
-  const [status, setStatus] = useState("Waiting...");
+  const [status, setStatus] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // 🔥 Listen for order status
   useEffect(() => {
-  if (!table) return;
-
-  const q = query(
-    collection(db, "orders"),
-    where("table", "==", String(table))
-  );
-
-  const unsubscribe = onSnapshot(q, (snapshot) => {
-    if (!snapshot.empty) {
-      const latestOrder = snapshot.docs[0].data();
-      console.log("Live status:", latestOrder.status);
-      setStatus(latestOrder.status);
+    if (!table) {
+      setStatus("No table selected");
+      setLoading(false);
+      return;
     }
-  });
 
-  return () => unsubscribe();
-}, [table]);
+    const q = query(
+      collection(db, "orders"),
+      where("table", "==", String(table))
+    );
 
-  // 🎨 Status color
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        if (snapshot.empty) {
+          setStatus("No active order");
+          setLoading(false);
+          return;
+        }
+
+        // Get latest order manually (no orderBy to avoid index crash)
+        const orders = snapshot.docs.map((doc) => doc.data());
+
+        const latestOrder = orders.sort((a: any, b: any) => {
+          const aTime = a.createdAt?.seconds || 0;
+          const bTime = b.createdAt?.seconds || 0;
+          return bTime - aTime;
+        })[0];
+
+        setStatus(latestOrder?.status || "Unknown");
+        setLoading(false);
+      },
+      (error) => {
+        console.log("Status Listener Error:", error);
+        setStatus("Error loading status");
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [table]);
+
   const getColor = () => {
     if (status === "pending") return "orange";
     if (status === "preparing") return "#ff9800";
@@ -43,16 +64,22 @@ export default function OrderStatus() {
     if (status === "completed") return "#145c43";
     return "black";
   };
-  
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Table: {table}</Text>
 
-      <Text style={styles.label}>Order Status:</Text>
+      {loading ? (
+        <ActivityIndicator size="large" color="#145c43" />
+      ) : (
+        <>
+          <Text style={styles.label}>Order Status:</Text>
 
-      <Text style={[styles.status, { color: getColor() }]}>
-        {status.toUpperCase()}
-      </Text>
+          <Text style={[styles.status, { color: getColor() }]}>
+            {status?.toUpperCase()}
+          </Text>
+        </>
+      )}
     </View>
   );
 }

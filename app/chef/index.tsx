@@ -31,7 +31,6 @@ export default function ChefPanel() {
     const q = query(
       collection(db, "orders"),
       where("paymentStatus", "==", "paid"),
-      orderBy("createdAt", "asc")
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
