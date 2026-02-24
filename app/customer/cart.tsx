@@ -1,5 +1,10 @@
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  serverTimestamp,
+  getDocs,
+} from "firebase/firestore";
 import { useCart } from "../../context/CartContext";
 import { db } from "../../firebase";
 import {
@@ -20,6 +25,30 @@ export default function CartScreen() {
     0
   );
 
+  // 🔔 SEND NOTIFICATION
+  const sendNotificationToChef = async () => {
+    const tokensSnapshot = await getDocs(collection(db, "chefTokens"));
+
+    tokensSnapshot.forEach(async (docSnap) => {
+      const token = docSnap.data().token;
+
+      await fetch("https://exp.host/--/api/v2/push/send", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Accept-Encoding": "gzip, deflate",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: token,
+          sound: "default",
+          title: "New Order Received 🍽️",
+          body: `Table ${table} placed a new order`,
+        }),
+      });
+    });
+  };
+
   const increaseQty = (index: number) => {
     const updated = [...cart];
     updated[index].quantity += 1;
@@ -38,7 +67,7 @@ export default function CartScreen() {
     setCart(updated);
   };
 
-  // 🔥 PAY & SAVE ORDER
+  // 💳 PAYMENT
   const handlePayment = () => {
     if (cart.length === 0) {
       alert("Cart is empty");
@@ -59,19 +88,23 @@ export default function CartScreen() {
 
         handler: async function (response: any) {
           try {
-            await addDoc(collection(db, "orders"), {
+            const docRef = await addDoc(collection(db, "orders"), {
               table: String(table),
               items: cart,
               totalAmount: total,
-              status: "confirmed",
+              status: "pending",
               paymentStatus: "paid",
               razorpay_payment_id: response.razorpay_payment_id,
               createdAt: serverTimestamp(),
             });
 
+            await sendNotificationToChef();
+
             setCart([]);
 
-            router.replace(`/customer/status?table=${table}`);
+            router.replace(
+              `/customer/status?orderId=${docRef.id}`
+            );
           } catch (error) {
             alert("Order save failed after payment");
           }
@@ -116,7 +149,9 @@ export default function CartScreen() {
                   <Text style={styles.qtyText}>−</Text>
                 </TouchableOpacity>
 
-                <Text style={styles.qtyNumber}>{item.quantity}</Text>
+                <Text style={styles.qtyNumber}>
+                  {item.quantity}
+                </Text>
 
                 <TouchableOpacity
                   style={styles.qtyButton}
@@ -131,11 +166,18 @@ export default function CartScreen() {
       )}
 
       <View style={styles.totalContainer}>
-        <Text style={styles.totalText}>Total: ₹ {total}</Text>
+        <Text style={styles.totalText}>
+          Total: ₹ {total}
+        </Text>
       </View>
 
-      <TouchableOpacity style={styles.payButton} onPress={handlePayment}>
-        <Text style={styles.payText}>Place Order & Pay</Text>
+      <TouchableOpacity
+        style={styles.payButton}
+        onPress={handlePayment}
+      >
+        <Text style={styles.payText}>
+          Place Order & Pay
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
