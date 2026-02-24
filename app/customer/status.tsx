@@ -1,61 +1,39 @@
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import {
-  collection,
-  query,
-  where,
-  onSnapshot,
-} from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
 
 export default function OrderStatus() {
-  const { table } = useLocalSearchParams();
-  const [status, setStatus] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { orderId } = useLocalSearchParams();
+  const [status, setStatus] = useState("Loading...");
 
   useEffect(() => {
-    if (!table) {
-      setStatus("No table selected");
-      setLoading(false);
+    if (!orderId) {
+      setStatus("No order found");
       return;
     }
 
-    const q = query(
-      collection(db, "orders"),
-      where("table", "==", String(table))
-    );
-
     const unsubscribe = onSnapshot(
-      q,
+      doc(db, "orders", String(orderId)),
       (snapshot) => {
-        if (snapshot.empty) {
-          setStatus("No active order");
-          setLoading(false);
+        if (!snapshot.exists()) {
+          setStatus("Order not found");
           return;
         }
 
-        // Get latest order manually (no orderBy to avoid index crash)
-        const orders = snapshot.docs.map((doc) => doc.data());
+        const data = snapshot.data();
 
-        const latestOrder = orders.sort((a: any, b: any) => {
-          const aTime = a.createdAt?.seconds || 0;
-          const bTime = b.createdAt?.seconds || 0;
-          return bTime - aTime;
-        })[0];
-
-        setStatus(latestOrder?.status || "Unknown");
-        setLoading(false);
-      },
-      (error) => {
-        console.log("Status Listener Error:", error);
-        setStatus("Error loading status");
-        setLoading(false);
+        if (data?.status) {
+          setStatus(data.status);
+        } else {
+          setStatus("Unknown");
+        }
       }
     );
 
     return () => unsubscribe();
-  }, [table]);
+  }, [orderId]);
 
   const getColor = () => {
     if (status === "pending") return "orange";
@@ -67,19 +45,11 @@ export default function OrderStatus() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Table: {table}</Text>
+      <Text style={styles.label}>Order Status:</Text>
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#145c43" />
-      ) : (
-        <>
-          <Text style={styles.label}>Order Status:</Text>
-
-          <Text style={[styles.status, { color: getColor() }]}>
-            {status?.toUpperCase()}
-          </Text>
-        </>
-      )}
+      <Text style={[styles.status, { color: getColor() }]}>
+        {status.toUpperCase()}
+      </Text>
     </View>
   );
 }
@@ -91,16 +61,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#fff",
   },
-  title: {
-    fontSize: 18,
-    marginBottom: 20,
-    fontWeight: "bold",
-  },
   label: {
-    fontSize: 16,
+    fontSize: 18,
   },
   status: {
-    fontSize: 28,
+    fontSize: 32,
     marginTop: 10,
     fontWeight: "bold",
   },
