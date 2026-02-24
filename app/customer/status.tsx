@@ -21,7 +21,7 @@ export default function OrderStatus() {
 
     const q = query(
       collection(db, "orders"),
-      where("table", "==", table),
+      where("table", "==", String(table)),
       orderBy("createdAt", "desc"),
       limit(1)
     );

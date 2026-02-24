@@ -60,7 +60,7 @@ export default function CartScreen() {
         handler: async function (response: any) {
           try {
             await addDoc(collection(db, "orders"), {
-              table,
+              table: String(table),
               items: cart,
               totalAmount: total,
               status: "confirmed",
