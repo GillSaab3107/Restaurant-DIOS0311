@@ -17,24 +17,23 @@ export default function OrderStatus() {
 
   // 🔥 Listen for order status
   useEffect(() => {
-    if (!table) return;
+  if (!table) return;
 
-    const q = query(
-      collection(db, "orders"),
-      where("table", "==", String(table)),
-      orderBy("createdAt", "desc"),
-      limit(1)
-    );
+  const q = query(
+    collection(db, "orders"),
+    where("table", "==", String(table))
+  );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        const latestOrder = snapshot.docs[0].data();
-setStatus(latestOrder.status);
-      }
-    });
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    if (!snapshot.empty) {
+      const latestOrder = snapshot.docs[0].data();
+      console.log("Live status:", latestOrder.status);
+      setStatus(latestOrder.status);
+    }
+  });
 
-    return () => unsubscribe();
-  }, [table]);
+  return () => unsubscribe();
+}, [table]);
 
   // 🎨 Status color
   const getColor = () => {
