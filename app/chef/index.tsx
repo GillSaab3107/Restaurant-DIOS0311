@@ -1,14 +1,6 @@
 import { useEffect, useState } from "react";
 import { Platform } from "react-native";
 
-let Notifications: any;
-let Device: any;
-
-if (Platform.OS !== "web") { 
-  Notifications =
-require("expo-notifications");
-  Device = require("expo-device");
-}
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from "react-native";
 import {
   collection,
@@ -24,9 +16,6 @@ import { db } from "../../firebase";
 
 export default function ChefPanel() {
   const [orders, setOrders] = useState<any[]>([]);
-
-  useEffect(() => {
-    registerForPushNotifications();
 
     const q = query(
       collection(db, "orders"),
@@ -52,31 +41,7 @@ export default function ChefPanel() {
     });
   };
 
-  async function registerForPushNotifications() {
-  if (Platform.OS === "web") return;
-  if (!Device?.isDevice) return;
-
-  const { status: existingStatus } =
-    await Notifications.getPermissionsAsync();
-
-  let finalStatus = existingStatus;
-
-  if (existingStatus !== "granted") {
-    const { status } =
-      await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-
-  if (finalStatus !== "granted") return;
-
-  const token =
-    (await Notifications.getExpoPushTokenAsync()).data;
-
-  await addDoc(collection(db, "chefTokens"), {
-    token,
-  });
-}
-  return (
+    return (
     <View style={styles.container}>
       <Text style={styles.title}>Chef Dashboard</Text>
 
