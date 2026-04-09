@@ -11,16 +11,14 @@ export default function Index() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        router.replace("/login"); // or wherever login is
+        router.replace("/login"); // 👈 make sure this exists
         return;
       }
 
-      // 🔥 GET ROLE
-      const docRef = doc(db, "users", user.uid);
-      const docSnap = await getDoc(docRef);
+      const docSnap = await getDoc(doc(db, "users", user.uid));
 
       if (!docSnap.exists()) {
-        alert("No role assigned");
+        router.replace("/login");
         return;
       }
 
