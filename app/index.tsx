@@ -1,46 +1,46 @@
-const handleLogin = async () => {
-  try {
-    const userCredential = await signInWithEmailAndPassword(
-      auth,
-      email.trim(),
-      password
-    );
+import { useEffect } from "react";
+import { auth, db } from "../firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { useRouter } from "expo-router";
+import { View, ActivityIndicator } from "react-native";
 
-    const uid = userCredential.user.uid;
+export default function Index() {
+  const router = useRouter();
 
-    const userDoc = await getDoc(doc(db, "users", uid));
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        router.replace("/login"); // or wherever login is
+        return;
+      }
 
-    if (!userDoc.exists()) {
-      alert("No role assigned to this user");
-      return;
-    }
+      // 🔥 GET ROLE
+      const docRef = doc(db, "users", user.uid);
+      const docSnap = await getDoc(docRef);
 
-    const role = userDoc.data().role;
+      if (!docSnap.exists()) {
+        alert("No role assigned");
+        return;
+      }
 
-    console.log("User role:", role); // DEBUG
+      const role = docSnap.data().role;
 
-    switch (role) {
-      case "admin":
+      if (role === "admin") {
         router.replace("/admin");
-        break;
-
-      case "chef":
+      } else if (role === "chef") {
         router.replace("/chef");
-        break;
+      } else {
+        router.replace("/customer");
+      }
+    });
 
-      case "owner":
-        router.replace("/owner");
-        break;
+    return () => unsubscribe();
+  }, []);
 
-      case "cashmanager":
-        router.replace("/cashmanager");
-        break;
-
-      default:
-        alert("Invalid role");
-    }
-
-  } catch (error: any) {
-    alert(error.message);
-  }
-};
+  return (
+    <View style={{ flex: 1, justifyContent: "center" }}>
+      <ActivityIndicator size="large" />
+    </View>
+  );
+}
